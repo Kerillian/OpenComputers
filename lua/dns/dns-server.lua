@@ -34,7 +34,7 @@ local function saveEntries()
     handle:close();
 end
 
-function commands.ping()
+function commands.scan()
     return true;
 end
 

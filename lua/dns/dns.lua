@@ -61,23 +61,30 @@ function dns.sendCommand(...)
     return false, "No repsonse from DNS server after 3 retries.";
 end
 
-function dns.ping()
+function dns.scan()
     local pongs = {};
+    local found = 0;
 
     modem.open(53);
-    modem.broadcast(53, "ping");
+    modem.broadcast(53, "scan");
 
-    -- Only capture 10 hosts, any more is kinda useless.
-    for _ = 1, 10 do
-        local _, _, remoteAddr = event.pull(2, "modem_message", nil, nil, 53);
-        table.insert(pongs, remoteAddr);
+    for _ = 1, 100 do
+        local event, _, remoteAddr, _, distance = event.pull(2, "modem_message", nil, nil, 53);
+
+        -- If 2 seconds have passed and we got no messages we don't need to continue checking.
+        if not event then
+            break;
+        end
+
+        pongs[remoteAddr] = distance;
+        found = found + 1;
     end
 
     modem.close(53);
-    return #pongs > 0, pongs;
+    return found, pongs;
 end
 
-function dns.resovle(domain)
+function dns.resolve(domain)
     if dns.cache[domain] then
         return true, dns.cache[domain];
     end
