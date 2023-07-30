@@ -1,3 +1,4 @@
+---@diagnostic disable: lowercase-global
 local event = require("event");
 local component = require("component");
 local kfs = require("libk.fs");
@@ -99,32 +100,50 @@ local function onMessage(_, localAddr, remoteAddr, port, distance, command, doma
     end
 end
 
-local function onManageDNS(_, command, ...)
-    if command == "resolve" then
-        event.push("dns_manage_response", commands.resolve(nil, ...));
-        return;
-    end
-
-    if command == "reverse" then
-        event.push("dns_manage_response", commands.reverse(nil, ...));
-        return;
-    end
-
-    if command == "relinquish" then
-        local target = select(1, ...);
-
-        if registed.domains[target] then
-            target = registed.domains[target];
-        end
-
-        event.push("dns_manage_response", commands.relinquish(target));
-        return;
-    end
-
-    event.push("dns_manage_response", false, "Invalid command.");
+function help()
+    print("rc dns-server help");
+    print("rc dns-server resolve [domain]");
+    print("rc dns-server reverse [addr]");
+    print("rc dns-server relinquish [domain|addr]");
+    print("rc dns-server search [domain|addr]");
 end
 
----@diagnostic disable-next-line: lowercase-global
+function resolve(domain)
+    print(commands.resolve(nil, domain));
+end
+
+function reverse(addr)
+    print(commands.reverse(nil, addr));
+end
+
+function relinquish(target)
+    if registed.domains[target] then
+        target = registed.domains[target];
+    end
+
+    print(commands.relinquish(target));
+end
+
+function search(query)
+    local results = {};
+
+    for k,v in pairs(registed.domains) do
+        if string.find(k, query) then
+            results[k] = v;
+        end
+    end
+
+    for k,v in pairs(registed.addresses) do
+        if string.find(k, query) then
+            results[k] = v;
+        end
+    end
+
+    for k,v in pairs(results) do
+        print(k, v);
+    end
+end
+
 function start()
     print("Serving DNS on port 53: " .. modem.address);
 
@@ -132,15 +151,12 @@ function start()
     modem.open(53);
 
     event.listen("modem_message", onMessage);
-    event.listen("dns_manage_request", onManageDNS);
 end
 
----@diagnostic disable-next-line: lowercase-global
 function stop()
     print("No longer serving DNS on port 53: " .. modem.address);
 
     event.ignore("modem_message", onMessage);
-    event.ignore("dns_manage_request", onManageDNS);
 
     modem.close(53);
     saveEntries();
